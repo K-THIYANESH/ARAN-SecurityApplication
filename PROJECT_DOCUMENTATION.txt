@@ -1,0 +1,446 @@
+================================================================================
+  ARAN — AUTONOMOUS RISK ANALYSIS & NETWORK SECURITY PLATFORM (ML ENHANCED)
+                  COMPLETE A-TO-Z TECHNICAL DOCUMENTATION
+================================================================================
+
+DOCUMENT VERSION: 1.0.0
+TARGET PLATFORM: Java 21 LTS
+STORAGE MODES: FILE (Default / Thread-safe CSV/In-Memory) & MYSQL
+HTTP SERVER: Java Built-in HttpServer (com.sun.net.httpserver)
+FRONTEND DASHBOARD: Vanilla JavaScript (ES Modules), CSS3 Glassmorphic UI
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1. PROJECT OVERVIEW & CORE OBJECTIVES
+2. HIGH-LEVEL ARCHITECTURE & COMPONENT INTERACTION
+3. COMPLETE REPOSITORY DIRECTORY TREE
+4. JAVA ENVIRONMENT & COMPILATION/EXECUTION STEPS
+5. JAVA DOMAIN MODEL & CLASS REFERENCE (A-TO-Z)
+   5.1 Entry Point & Lifecycle (`aran.ARANApplication`)
+   5.2 REST API & Static File Server (`aran.api.ApiServer`)
+   5.3 Threat Detection Engine (`aran.detector.*` & `aran.service.ThreatDetectionService`)
+   5.4 Machine Learning Engine (`aran.ml.*`)
+   5.5 Service Layer (`aran.service.*`)
+   5.6 Storage & Persistence Layer (`aran.storage.*`)
+   5.7 Real-Time Log Monitoring (`aran.monitor.LogMonitor`)
+   5.8 Security & Utilities (`aran.security.*`, `aran.util.*`)
+6. THREAT DETECTION RULES & RISK SCORING ALGORITHMS
+7. MACHINE LEARNING ENGINE TECHNICAL SPECIFICATION (MATHEMATICS & FEATURE VECTOR)
+8. REST API SPECIFICATION (ENDPOINTS & SCHEMAS)
+9. DASHBOARD FRONTEND ARCHITECTURE & DATA FLOW
+10. SECURITY & FAILURE FALLBACK MECHANISMS
+11. TROUBLESHOOTING & COMMON OPERATIONAL TASKS
+
+================================================================================
+1. PROJECT OVERVIEW & CORE OBJECTIVES
+================================================================================
+ARAN (Autonomous Risk Analysis & Network Security Platform) is a lightweight,
+high-performance Java-based Security Information and Event Management (SIEM)
+and Threat Detection engine. 
+
+Key Goals:
+- Real-time ingestion and analysis of security audit logs.
+- Deterministic rule-based detection for multi-vector attacks (Brute Force,
+  Malware, Sensitive File Access, Privilege Escalation, Data Exfiltration).
+- Machine Learning (ML) log analysis using a 3-class Multinomial Logistic
+  Regression model running offline with zero external AI framework overhead.
+- Graceful, automatic fallback to deterministic security rules when ML models
+  are missing, corrupted, or unreadable.
+- Embedded web REST API and reactive SOC Security Dashboard for visualization.
+
+================================================================================
+2. HIGH-LEVEL ARCHITECTURE & COMPONENT INTERACTION
+================================================================================
+
+                       +-----------------------------------+
+                       |      Security Log Ingestion       |
+                       |  (CLI / File Monitor / REST API)  |
+                       +-----------------------------------+
+                                         |
+                                         v
+                       +-----------------------------------+
+                       |    aran.service.EventService      |
+                       +-----------------------------------+
+                                         |
+        +--------------------------------+--------------------------------+
+        |                                                                 |
+        v                                                                 v
++-------------------------------+                               +-------------------------------+
+|  aran.ml.MLLogAnalyzerService |                               | ThreatDetectionService        |
+|  (ML 37-dim Classifier /      |                               | (Deterministic Rule Engine)   |
+|   Rule-Based Fallback)        |                               +-------------------------------+
++-------------------------------+                                         |
+        |                                                                 v
+        v                                                       +-------------------------------+
++-------------------------------+                               | RiskScoreService & Incident   |
+|  Classification Decision      |                               | Generation                    |
+| (SAFE / MANUAL REVIEW / BLOCK)|                               +-------------------------------+
++-------------------------------+                                         |
+                                                                          v
+                                                                +-------------------------------+
+                                                                | Storage Repositories          |
+                                                                | (Events, Threats, Incidents)  |
+                                                                +-------------------------------+
+                                                                          |
+                                                                          v
+                                                                +-------------------------------+
+                                                                |  aran.api.ApiServer &         |
+                                                                |  Web SOC Dashboard            |
+                                                                +-------------------------------+
+
+================================================================================
+3. COMPLETE REPOSITORY DIRECTORY TREE
+================================================================================
+java_project-main/
+│
+├── config/
+│   ├── application.properties    # Core configuration (api.port, storage mode, etc.)
+│   └── ml-model.json             # Offline ML weights, intercepts, and feature definitions
+│
+├── dashboard/                    # Web SOC Dashboard (Static HTML/CSS/JS)
+│   ├── index.html                # Single-Page Application (SPA) entry point
+│   ├── css/
+│   │   └── styles.css            # Dark mode glassmorphic UI styles
+│   └── js/
+│       ├── api.js                # Single source for backend fetch() API calls
+│       ├── app.js                # Frontend router and SPA navigation
+│       ├── charts.js             # Canvas/SVG visualization routines
+│       ├── dashboard.js          # Overview page logic
+│       ├── notifications.js      # Toast notifications
+│       ├── utils.js              # Formatting and HTML escaping utilities
+│       └── pages/                # Individual page modules
+│           ├── dashboard.js
+│           ├── events.js
+│           ├── incidents.js
+│           ├── ml-analyzer.js    # ML Log Analyzer page module
+│           ├── monitoring.js
+│           ├── reports.js
+│           ├── risk.js
+│           ├── system.js
+│           └── threats.js
+│
+├── data/                         # CSV persistence storage directory
+│   ├── events.csv                # Persisted Security Events
+│   ├── threats.csv                # Persisted Threat Findings
+│   └── incidents.csv             # Persisted Security Incidents
+│
+├── input/                        # Test security log files for ML analysis
+│   ├── safe.log                  # Sample containing routine safe events
+│   ├── manual-review.log         # Sample requiring analyst review
+│   └── suspicious-block.log      # Sample requiring containment (block)
+│
+├── logs/                         # Audit and monitoring logs
+│   ├── security-events.log       # Main log file watched by LogMonitor
+│   └── audit.log                 # Audit trail log file
+│
+├── out/                          # Compiled Java byte-code class files (.class)
+│
+├── src/                          # Java Source Code
+│   └── aran/                     # Main Package Namespace
+│       ├── ARANApplication.java  # Main Application Startup Class
+│       ├── api/
+│       │   └── ApiServer.java    # Embedded HTTP API & Dashboard Server
+│       ├── detector/             # Specific Threat Detectors
+│       │   ├── BehaviourAnalyzer.java
+│       │   ├── BruteForceDetector.java
+│       │   ├── MalwareDetector.java
+│       │   ├── PrivilegeEscalationDetector.java
+│       │   ├── SensitiveFileDetector.java
+│       │   └── ThreatDetector.java (Interface)
+│       ├── ml/                   # Machine Learning Engine
+│       │   ├── MLLogAnalyzerService.java
+│       │   └── MLLogClassifier.java
+│       ├── model/                # Data Domain Models
+│       │   ├── EventType.java
+│       │   ├── Incident.java
+│       │   ├── RiskAssessment.java
+│       │   ├── RiskLevel.java
+│       │   ├── SecurityEvent.java
+│       │   └── Threat.java
+│       ├── monitor/              # Real-Time File Monitoring
+│       │   └── LogMonitor.java
+│       ├── security/             # Security Services
+│       │   └── AuthenticationService.java
+│       ├── service/              # Application Core Services
+│       │   ├── AuditService.java
+│       │   ├── EventService.java
+│       │   ├── ReportService.java
+│       │   ├── RiskScoreService.java
+│       │   └── ThreatDetectionService.java
+│       ├── storage/              # Persistence Repositories
+│       │   ├── EventRepository.java
+│       │   ├── IncidentRepository.java
+│       │   ├── MySqlDatabase.java
+│       │   └── ThreatRepository.java
+│       └── util/                 # Utilities
+│           ├── AppConfig.java
+│           ├── Console.java
+│           └── IpValidator.java
+│
+├── run.bat                       # Windows Batch script for building & running ARAN
+├── run.sh                        # Linux/macOS Shell script for building & running ARAN
+└── README.md                     # Project documentation overview
+
+================================================================================
+4. JAVA ENVIRONMENT & COMPILATION/EXECUTION STEPS
+================================================================================
+Java Requirement:
+- Target Version: Java 21 LTS (tested with OpenJDK 21.0.11 Temurin).
+- Standard Java APIs only (uses com.sun.net.httpserver, java.nio, java.util.concurrent).
+
+Compilation Command:
+  if not exist out mkdir out
+  dir /s /b src\*.java > sources.txt
+  javac --release 21 -d out @sources.txt
+
+Execution Modes:
+
+  Mode 1: Headless Server Mode (Web API + Dashboard)
+  --------------------------------------------------
+  java -cp out aran.ARANApplication --server
+
+  Mode 2: Interactive CLI + Background Server Mode
+  --------------------------------------------------
+  java -cp out aran.ARANApplication
+
+Configuration Options (`config/application.properties`):
+  api.port=8085               # HTTP port for REST API and SOC Dashboard
+  storage.mode=FILE           # FILE (default CSV) or MYSQL
+  monitor.log.file=logs/security-events.log
+  monitor.interval.ms=1000    # File polling frequency in milliseconds
+  bruteforce.threshold=3      # Login failures before brute-force trigger
+  bruteforce.window.minutes=5 # Rolling time window for brute-force tracking
+  risk.threshold.high=60      # Risk score threshold for HIGH risk incident
+  risk.threshold.critical=80  # Risk score threshold for CRITICAL risk incident
+
+================================================================================
+5. JAVA DOMAIN MODEL & CLASS REFERENCE (A-TO-Z)
+================================================================================
+
+--------------------------------------------------------------------------------
+5.1 Entry Point & Lifecycle (`aran.ARANApplication`)
+--------------------------------------------------------------------------------
+- Purpose: Application entry point (`main(String[] args)`). Initializer for repositories,
+  log monitor, threat detector, audit logging, and embedded HTTP server.
+- Key Methods:
+  - `main(String[] args)`: Configures JDK logging format and boots ARAN.
+  - `run(boolean serverMode)`: Starts autoStart() services. In server mode, blocks on
+    main thread until Ctrl+C. In CLI mode, handles user authentication and CLI menu loops.
+  - `autoStart()`: Starts `LogMonitor` daemon thread and boots `ApiServer`.
+  - `runSimulation()`: Injects synthetic multi-step attack sequences for testing.
+
+--------------------------------------------------------------------------------
+5.2 REST API & Static File Server (`aran.api.ApiServer`)
+--------------------------------------------------------------------------------
+- Purpose: Uses Java built-in `com.sun.net.httpserver.HttpServer` with a thread pool executor.
+  Serves JSON API responses for `/api/*` and serves static Web Dashboard assets from `/dashboard/`.
+- Routes Registered:
+  - `GET /api/health`: System health status and basic counters.
+  - `GET /api/events`, `GET /api/events/recent`: Query security event logs.
+  - `GET /api/threats`, `GET /api/threats/recent`: Query detected threat findings.
+  - `GET /api/incidents`, `GET /api/incidents/{id}`, `PATCH /api/incidents/{id}`: Manage incidents.
+  - `GET /api/dashboard/summary`: Summary metrics for the dashboard home view.
+  - `GET /api/risk/summary`: Aggregated risk levels and average threat scores.
+  - `POST /api/event`: Manual security event ingestion endpoint.
+  - `POST /api/simulation/run`: Trigger attack simulation.
+  - `GET /api/ml/status`: Returns current status of ML classifier model.
+  - `POST /api/ml/analyze`: Batch log file classification via ML or Fallback.
+  - `POST /api/reports/generate`: Generate text report on security state.
+  - `GET /`: Serves static `dashboard/index.html` and assets (.css, .js, .json).
+
+--------------------------------------------------------------------------------
+5.3 Threat Detection Engine (`aran.detector.*`)
+--------------------------------------------------------------------------------
+- `ThreatDetector` (Interface): Standard contract `List<Threat> detect(List<SecurityEvent> events)`.
+- `BruteForceDetector`: Analyzes sliding window of `LOGIN_FAILURE` events per username/IP.
+- `MalwareDetector`: Checks for `MALWARE_DETECTED` events or suspicious process/file execution.
+- `SensitiveFileDetector`: Triggers on unauthorized access to confidential paths (e.g. payroll, shadow, passwd).
+- `PrivilegeEscalationDetector`: Detects unauthorized elevation to administrator/root privileges.
+- `BehaviourAnalyzer`: Identifies multi-step attack sequences (e.g., USB Insertion followed by Sensitive Access).
+
+--------------------------------------------------------------------------------
+5.4 Machine Learning Engine (`aran.ml.*`)
+--------------------------------------------------------------------------------
+- `MLLogClassifier`:
+  - Mathematical Multinomial Logistic Regression model.
+  - Loads model matrix ($3 \times 37$ weights, $3$-length intercepts) from JSON.
+  - Evaluates $37$ feature vector inputs (event types, keywords, IP type, velocity).
+  - Computes Softmax probabilities: $p_0$ (SAFE), $p_1$ (MANUAL REVIEW), $p_2$ (BLOCK).
+  - Contains deterministic `fallback(String eventType, String details)` method invoked
+    when model file is missing or malformed.
+- `MLLogAnalyzerService`:
+  - Reads pipe-delimited (`username|eventType|ipAddress|details`) log lines.
+  - Maintains stateful feature counters across lines (e.g., failure counts, USB sequences).
+  - Ingests events into `EventService` and returns line-by-line classification batches.
+
+--------------------------------------------------------------------------------
+5.5 Service Layer (`aran.service.*`)
+--------------------------------------------------------------------------------
+- `EventService`: Coordinates event validation, repository persistence, and triggers
+  `ThreatDetectionService`.
+- `ThreatDetectionService`: Passes ingested events through all registered `ThreatDetector`
+  rules. Calculates aggregate risk score using `RiskScoreService` and auto-generates `Incident` records
+  if risk thresholds are breached.
+- `RiskScoreService`: Computes dynamic risk score based on severity weights, asset criticality,
+  and threat repetition frequency.
+- `AuditService`: Append-only audit logger for tracking system actions and administrator operations.
+- `ReportService`: Generates structured text reports summarizing current system posture.
+
+--------------------------------------------------------------------------------
+5.6 Storage & Persistence Layer (`aran.storage.*`)
+--------------------------------------------------------------------------------
+- `EventRepository`, `ThreatRepository`, `IncidentRepository`:
+  - Thread-safe repository wrappers using `ConcurrentHashMap` and thread-safe locking.
+  - Storage backends: File-based CSV persistence (`data/*.csv`) or optional MySQL database connection.
+- `MySqlDatabase`: JDBC connector supporting optional database persistence.
+
+--------------------------------------------------------------------------------
+5.7 Real-Time Log Monitoring (`aran.monitor.LogMonitor`)
+--------------------------------------------------------------------------------
+- `LogMonitor`: Background daemon thread (`java.lang.Thread`) watching a target log file (`logs/security-events.log`).
+  Reads new lines appended in real-time, parses pipe-delimited format, and sends them to `EventService`.
+
+--------------------------------------------------------------------------------
+5.8 Security & Utilities (`aran.security.*`, `aran.util.*`)
+--------------------------------------------------------------------------------
+- `AuthenticationService`: Hardened credential authentication for CLI administrative users.
+- `AppConfig`: Singleton loader reading `config/application.properties` with safe defaults.
+- `Console`: Terminal styling helper for status indicators and ANSI headers.
+- `IpValidator`: Validates IPv4 format and checks internal vs external network boundaries.
+
+================================================================================
+6. THREAT DETECTION RULES & RISK SCORING ALGORITHMS
+================================================================================
+Threat Severity Matrix:
+-----------------------
+- CRITICAL (Risk Score 80-100): `MALWARE_DETECTED`, `DATA_EXFILTRATION`, `PRIVILEGE_ESCALATION`.
+- HIGH (Risk Score 60-79): Brute force threshold exceeded ($>3$ failures), `SENSITIVE_FILE_ACCESS`.
+- MEDIUM (Risk Score 40-59): `USB_INSERTED`, `NETWORK_SCAN`, repeated authentication failures.
+- LOW (Risk Score 10-39): Unrecognized event patterns, minor informational warnings.
+
+Incident Auto-Generation Threshold:
+- Risk Score $\ge 60$ automatically spawns a new `Incident` record in `OPEN` status.
+
+================================================================================
+7. MACHINE LEARNING ENGINE TECHNICAL SPECIFICATION
+================================================================================
+Algorithm: 3-Class Multinomial Logistic Regression (Softmax Regression).
+
+Classes:
+  0 -> SAFE
+  1 -> MANUAL_REVIEW
+  2 -> BLOCK
+
+Feature Vector Mapping ($x \in \mathbb{R}^{37}$):
+  x[0..9]   : One-hot binary indicator for 10 event types (LOGIN_SUCCESS, LOGIN_FAILURE, etc.)
+  x[10..31] : Binary indicators for 22 security keywords (bad password, payroll, dropper, etc.)
+  x[32]     : External IP flag (1.0 if public IP, 0.0 if RFC 1918 private/loopback)
+  x[33]     : Normalized login failure count (min(failures, 10) / 10.0)
+  x[34]     : Sequence flag (1.0 if USB inserted prior to sensitive file access)
+  x[35]     : Normalized IP repetition count (min(repeatCount, 10) / 10.0)
+  x[36]     : Normalized detail length (min(length, 300) / 300.0)
+
+Softmax Inference Equations:
+  1. Compute logits:  z_c = intercept_c + sum_{j=0}^{36} ( weight_{c,j} * x_j )  for c in {0, 1, 2}
+  2. Max normalization (numerical stability): max_z = max(z_0, z_1, z_2)
+  3. Exponents: s_c = exp( z_c - max_z )
+  4. Probabilities: p_c = s_c / ( s_0 + s_1 + s_2 )
+
+Decision Boundaries:
+  - If p_2 >= 0.65  --> BLOCK (High risk containment)
+  - Else if p_1 >= 0.50 or (p_1 >= p_0 and p_1 >= p_2) --> MANUAL REVIEW
+  - Else --> SAFE
+
+Fallback Engine:
+  When model file is missing or unreadable, `MLLogClassifier.fallback()` applies
+  deterministic fallback rules based on event types and keywords, ensuring zero downtime.
+
+================================================================================
+8. REST API SPECIFICATION
+================================================================================
+
+1. GET /api/health
+   Response: 200 OK
+   {"status":"UP","service":"ARAN","version":"1.0","storageMode":"FILE","monitoring":true,"events":41,"threats":12}
+
+2. GET /api/dashboard/summary
+   Response: 200 OK
+   {"events":41,"threats":12,"incidents":8,"criticalThreats":5,"highThreats":3,"mediumThreats":4,"averageRisk":74}
+
+3. POST /api/event
+   Request Body: {"username":"alice","eventType":"LOGIN_SUCCESS","ipAddress":"192.168.1.10","details":"routine login"}
+   Response: 201 Created
+   {"message":"Event accepted","eventId":"EVT-9A1B2C3D","severity":"LOW"}
+
+4. GET /api/ml/status
+   Response: 200 OK
+   {"modelAvailable":true,"engine":"ML: Multiclass Logistic Regression"}
+
+5. POST /api/ml/analyze
+   Request Body: {"filename":"upload.log","content":"alice|LOGIN_SUCCESS|192.168.1.2|normal session"}
+   Response: 200 OK
+   {
+     "filename": "upload.log",
+     "modelAvailable": true,
+     "engine": "ML: Multiclass Logistic Regression",
+     "totalLines": 1,
+     "validLines": 1,
+     "rejectedLines": 0,
+     "safe": 1,
+     "manualReview": 0,
+     "blocked": 0,
+     "results": [
+       {
+         "line": 1,
+         "username": "alice",
+         "eventType": "LOGIN_SUCCESS",
+         "decision": "SAFE",
+         "confidence": 0.985,
+         "modelUsed": true
+       }
+     ]
+   }
+
+================================================================================
+9. DASHBOARD FRONTEND ARCHITECTURE
+================================================================================
+- Technology: Native Vanilla HTML5 / CSS3 / JavaScript (ES6 Modules). Zero build steps.
+- Single Source API Client: `dashboard/js/api.js` wraps all `fetch()` operations.
+- Pages / Views:
+  - Dashboard Home (`dashboard/js/pages/dashboard.js`): Executive metric cards & threat feed.
+  - Events View (`dashboard/js/pages/events.js`): Real-time searchable event log table.
+  - Threats View (`dashboard/js/pages/threats.js`): Detailed threat analysis breakdown.
+  - Incidents View (`dashboard/js/pages/incidents.js`): Incident management & status updates (PATCH).
+  - ML Log Analyzer (`dashboard/js/pages/ml-analyzer.js`): Upload log files for line-by-line ML classification.
+  - Attack Simulation (`dashboard/js/pages/monitoring.js`): Trigger attack workflows.
+
+================================================================================
+10. SECURITY & FAILURE FALLBACK MECHANISMS
+================================================================================
+1. Input Data Sanitization:
+   - Log files uploaded for ML analysis are parsed strictly as plain text data.
+   - Command contents (e.g. `rm -rf /`, `powershell ...`) inside log detail strings
+     are never evaluated or executed.
+2. Cross-Origin Resource Sharing (CORS):
+   - Configured in `ApiServer.addCors()` to allow secure browser API queries.
+3. Path Traversal & Static File Safety:
+   - Static file server normalizes file paths and restricts read access to `dashboard/`.
+4. Continuous Availability:
+   - If ML JSON model fails to load, `MLLogAnalyzerService` defaults to deterministic security rules.
+
+================================================================================
+11. TROUBLESHOOTING & COMMON OPERATIONAL TASKS
+================================================================================
+Q: How to change the API listening port?
+A: Edit `api.port` in `config/application.properties` (e.g., `api.port=8085`).
+
+Q: How to reset persisted event data?
+A: Delete CSV files inside `data/` directory (`data/events.csv`, `data/threats.csv`, `data/incidents.csv`).
+
+Q: How to verify ML vs Fallback mode?
+A: Query `http://localhost:8085/api/ml/status` or inspect `modelAvailable` boolean in `/api/ml/analyze` output.
+
+================================================================================
+                              END OF DOCUMENTATION
+================================================================================

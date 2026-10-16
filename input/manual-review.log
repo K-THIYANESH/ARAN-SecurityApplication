@@ -1,0 +1,4 @@
+# MANUAL REVIEW SAMPLE
+analyst1|LOGIN_FAILURE|203.0.113.20|invalid password
+analyst1|USB_INSERTED|10.0.0.15|USB drive connected for file transfer
+analyst1|SENSITIVE_FILE_ACCESS|10.0.0.15|finance/payroll.csv

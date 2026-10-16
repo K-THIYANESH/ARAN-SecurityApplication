@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ARAN SOC Dashboard</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<div class="shell">
+
+  <!-- ── Sidebar ─────────────────────────────────────────── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div class="brand-text"><h1>ARAN</h1><span>SOC Platform</span></div>
+    </div>
+
+    <nav class="nav" aria-label="Navigation">
+      <button class="nav-item active" data-page="dashboard">
+        <span class="icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg></span><span>Dashboard</span>
+      </button>
+      <button class="nav-item" data-page="events">
+        <span class="icon"><svg viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg></span><span>Events</span>
+      </button>
+      <button class="nav-item" data-page="threats">
+        <span class="icon"><svg viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg></span><span>Threats</span>
+      </button>
+      <button class="nav-item" data-page="incidents">
+        <span class="icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span><span>Incidents</span>
+      </button>
+      <button class="nav-item" data-page="risk">
+        <span class="icon"><svg viewBox="0 0 24 24"><path d="M18 20V10M12 20V4M6 20v-6"/></svg></span><span>Risk Analysis</span>
+      </button>
+      <button class="nav-item" data-page="monitoring">
+        <span class="icon"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></span><span>Live Monitor</span>
+      </button>
+      <button class="nav-item" data-page="ml-analyzer">
+        <span class="icon"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 15h3M1 9h3M1 15h3"/></svg></span><span>ML Log Analyzer</span>
+      </button>
+      <button class="nav-item" data-page="reports">
+        <span class="icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg></span><span>Reports</span>
+      </button>
+      <button class="nav-item" data-page="system">
+        <span class="icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span><span>System</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="status-pills">
+        <div class="status-pill">
+          <span>API</span>
+          <span class="dot" id="api-dot" title="API status"></span>
+        </div>
+        <div class="status-pill">
+          <span>Monitor</span>
+          <span class="dot warning" id="monitor-dot" title="Monitor status"></span>
+        </div>
+        <div class="status-pill">
+          <span>User</span>
+          <span style="color:var(--cyan);font-size:0.78rem">admin</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ───────────────────────────────────────────── -->
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="icon-btn" id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+        <h2 id="page-title">Dashboard</h2>
+      </div>
+      <div class="topbar-right">
+        <div id="backend-status" class="system-tag">Connecting…</div>
+        <button class="primary-btn" id="open-ingest-modal">+ Ingest Event</button>
+        <div class="avatar" title="Administrator">A</div>
+      </div>
+    </header>
+
+    <div class="content" id="content">
+      <!-- Pages rendered by JS -->
+    </div>
+  </main>
+</div>
+
+<!-- ── Ingest Modal ─────────────────────────────────────── -->
+<div class="modal" id="ingest-modal" aria-hidden="true">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Ingest Security Event</h3>
+      <button class="icon-btn close-modal" data-modal="ingest-modal">✕</button>
+    </div>
+    <form id="ingest-form">
+      <div class="modal-body">
+        <label class="form-label full-col">
+          Username <span class="required">*</span>
+          <input name="username" type="text" required placeholder="e.g. admin" autocomplete="off"/>
+        </label>
+        <label class="form-label">
+          Event Type <span class="required">*</span>
+          <select name="eventType" required>
+            <option value="">— select —</option>
+            <option value="LOGIN_SUCCESS">LOGIN_SUCCESS</option>
+            <option value="LOGIN_FAILURE">LOGIN_FAILURE</option>
+            <option value="FILE_ACCESS">FILE_ACCESS</option>
+            <option value="SENSITIVE_FILE_ACCESS">SENSITIVE_FILE_ACCESS</option>
+            <option value="USB_INSERTED">USB_INSERTED</option>
+            <option value="MALWARE_DETECTED">MALWARE_DETECTED</option>
+            <option value="PRIVILEGE_ESCALATION">PRIVILEGE_ESCALATION</option>
+            <option value="NETWORK_SCAN">NETWORK_SCAN</option>
+            <option value="DATA_EXFILTRATION">DATA_EXFILTRATION</option>
+            <option value="ACCOUNT_LOCKOUT">ACCOUNT_LOCKOUT</option>
+          </select>
+        </label>
+        <label class="form-label">
+          IP Address
+          <input name="ipAddress" type="text" placeholder="e.g. 192.168.1.100" autocomplete="off"/>
+        </label>
+        <label class="form-label full-col">
+          Details
+          <textarea name="details" rows="3" placeholder="Optional context"></textarea>
+        </label>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="secondary-btn close-modal" data-modal="ingest-modal">Cancel</button>
+        <button type="submit" class="primary-btn" id="ingest-submit">Submit Event</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── Toast Container ──────────────────────────────────── -->
+<div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

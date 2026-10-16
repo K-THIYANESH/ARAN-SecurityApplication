@@ -1,0 +1,4 @@
+# BLOCK SAMPLE
+attacker|MALWARE_DETECTED|198.51.100.77|known malicious dropper.exe ransomware payload
+attacker|DATA_EXFILTRATION|198.51.100.77|credential archive exfil to suspicious outbound upload
+root|PRIVILEGE_ESCALATION|198.51.100.77|unexpected admin privilege escalation
